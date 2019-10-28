@@ -10,10 +10,11 @@ void sig_handler(int signal){
 }
 
 int main(int argc, char **argv){
-    int seq, i;
+    int seq;
 
+    printf("Test\n");
     seq = atoi(argv[1]);
-    for(i = 2; i <= seq; i++){
+    for(int i = 2; i <= seq; i++){
         if(write(10, &i, sizeof(int)) <= 0)
             Error("[generador.c:main] Write pipe numbers\n"); 
     }
