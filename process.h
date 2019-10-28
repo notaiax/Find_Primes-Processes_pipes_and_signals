@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <errno.h>
+#include <signal.h>
 
 typedef struct
 {
