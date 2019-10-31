@@ -15,8 +15,8 @@ int main(int argc, char const *argv[]) {
 
 	int nombre;
 	t_infoNombre resultat;
-
-	while ((read(NOMBRES_OUT, &nombre, sizeof(int))) > 0) {
+	//Llegim del pipe nombres
+	while ((read(11, &nombre, sizeof(int))) > 0) {
 
 		resultat.pid = getpid();
 		resultat.nombre = nombre;
@@ -26,19 +26,15 @@ int main(int argc, char const *argv[]) {
 			totalPrimers++;
 		}
 
-		if(write(RESPOSTES_IN, &resultat, sizeof(t_infoNombre)) < 0) {
-			perror("Error en la escriptura en el pipe respostes");
-			exit(-1);
-		}
-	}
+		if(write(20, &resultat, sizeof(t_infoNombre)) < 0)
+			Error("Error en la escriptura en el pipe respostes");
 
-	if((read(NOMBRES_OUT, &nombre, sizeof(int))) < 0) {
-		perror("Error en la lectura del pipe nombres");
-		exit(-1);
 	}
+	if((read(11, &nombre, sizeof(int))) < 0)
+		Error("Error en la lectura del pipe nombres");
 
-	close(NOMBRES_OUT);
-	close(RESPOSTES_IN);
+	close(11);
+	close(20);
 
 	signal(SIGTERM, sig_handler);
 	pause();		// esperar fins a rebre una senyal

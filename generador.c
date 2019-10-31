@@ -11,14 +11,12 @@ int main (int argc, char *argv[]) {
 
 	// Generador escriu la seqüència de N enters al pipe nombres
 	for(int i=2; i <= N; i++) {
-		if ((write(NOMBRES_IN, &i, sizeof(int))) < 0) {
-			perror("Error al escriure al pipe nombres");
-      	exit(-1);
-		}
+		if ((write(10, &i, sizeof(int))) < 0)
+			Error("Error al escriure al pipe nombres");
 	}
 
 	//close(nombres[0]);
-	close(NOMBRES_IN);
+	close(10);
 
 	// Esperem una senyal per acabar
 	signal(SIGTERM, SIG_DFL);

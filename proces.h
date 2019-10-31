@@ -15,11 +15,6 @@ Codi font: proces.h
 #include <sys/wait.h>
 #include <signal.h>
 
-#define NOMBRES_IN 10
-#define NOMBRES_OUT 11
-#define RESPOSTES_IN 20
-#define RESPOSTES_OUT 21
-
 typedef struct
 {
 	int pid;
