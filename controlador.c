@@ -1,75 +1,164 @@
 /* -----------------------------------------------------------------------
-PRA1: [TODO]
+PRA1:  Processos, pipes i senyals: Primers - Pralab 1
 Codi font: controlador.c
-Nom complet Àiax Faura Vilalta
+Àiax Faura Vilalta
 ---------------------------------------------------------------------- */
-#include "process.h"
+#include "proces.h"
 
-#define MAX_PROCESSES 100
+int main(int argc, char *argv[]) {
 
+	if (argc < 2)
+		Error("Insuficient número d'arguments.");
+	// Agafem el nombre de processos que ens han passat per paràmetre
+	int processos = atoi(argv[1]);
 
-int main(int argc, char **argv){
-    int num_proc, gen_pid, n_primes; //seq->last num in the prime sequence 
-    int pipe_responses[2], pipe_numbers[2];
-    char char_seq[15], result[100]; //seq->last num in the prime sequence (char format)    
-    t_nameInfo info;
+	// Creació de variables que necessitarem per demanar la N
+	int N;
+	char num[15];
 
-    n_primes = 0;
-    //Read num processes
-    if (argc < 2)
-        Error("[controlador.c:main] Number of processes to create not specified\n");
-    num_proc = atoi(argv[1]);
-    //Check max processes
-    if (num_proc > MAX_PROCESSES)
-        Error("[controlador.c:main] Exceeded the process limit\n");
-    //Read sequence size
-    if (write(1, "Calcular nombres primers de 2 a?\n", strlen("Calcular nombres primers de 2 a?\n")) < 0) 
-        Error("[controlador.c:main] Writing\n");
-    if (read(0, char_seq, sizeof(char_seq)) < 0)
-        Error("[controlador.c:main] Reading sequence of primes\n");
-    //Signal treatment
-    if (signal(SIGTERM, SIG_IGN) == SIG_ERR)
-        Error("[controlador.c:main] Signal treatment\n");
-    //Pipes creation
-    if((pipe(pipe_responses) || pipe(pipe_numbers)) < 0)
-        Error("[controlador.c:main] Pipe creation\n");
-    //Get sequence from generador.c
-    if((gen_pid = fork()) == 0){
-        dup2(pipe_numbers[1],10);
-        close(pipe_numbers[0]);
-        close(pipe_numbers[1]); 
-        close(pipe_responses[0]);
-        close(pipe_responses[1]);
-        execl("./generador", "generador", char_seq, NULL);
-        Error("[controlador.c:main] Covering son.\n"); 
-    }
-    // Close pipe_numbers 1 because generador is the only allowed to write in this pipe
-    close(pipe_numbers[1]);
-    for (int i = 0; i < num_proc; i++){
-        if (fork == 0){
-            dup2(pipe_numbers[0], 11);
-            dup2(pipe_responses[1], 20);
-            close(pipe_numbers[0]);
-            close(pipe_responses[0]);
-            close(pipe_responses[1]);
-            execl("./calculador", "calculador", NULL);     
-            Error("[controlador.c:main] Covering son.\n"); 
-        }
-    }
-    dup2(pipe_responses[0], 21);
-    close(pipe_numbers[0]);
-    close(pipe_responses[0]);
-    close(pipe_responses[1]);
-    
-    //Read from the responses pipe
+	// Demanem a l'usuari fins a quin nombre (N) hem de calcular els nombres primers
+		write(1, "Calcular nombres primers de 2 a? ", strlen("Calcular nombres primers de 2 a? "));
+		read(0, num, sizeof(num));
+		N = atoi(num);
 
-    while (read(21, &info, sizeof(info)) != 0){
-        if (info.prime == 'S')
-            n_primes++;
-        sprintf(result, "Controlador: rebut del Calculador PID %i: nombre %i es primer? %c\n", info.pid, info.name, info.prime);
-        write(1, result, strlen(result));
-    }
-    kill(0, SIGTERM);
-    exit(0);
+	if (N < 2)
+		Error("N ha de ser 2 o major");
+
+	// Declaració dels pipes
+	int nombres[2], respostes[2];
+
+	// Creació pipe Nombres
+	if(pipe(nombres) < 0) {
+		// Cas d'error de creació dels pipes
+		perror ("ERROR en la creació del pipe nombres");
+		exit (-1);
+	}
+
+	// Creació del procés fill Generador
+	int pidGenerador = fork();
+
+	if(pidGenerador < 0) {
+		// Cas d'error del fork()
+		perror("ERROR en el fork del Generador");
+		exit(-1);
+
+	} else if (pidGenerador == 0) {
+		// Crear el procés fill Generador
+		// Dupliquem el descriptor d'escriptura de nombres al descriptor de fitxers 10 i el tanquem
+		dup2(nombres[1], NOMBRES_IN);
+		close(nombres[0]);
+		close(nombres[1]);
+
+		// Transformem aquest procés en un procés generador
+
+		if(execlp("./generador", "generador", num, NULL) < 0) {
+			// En cas d'error en el recobriment
+			perror("ERROR en el recobriment del generador");
+			exit(-1);
+		}
+	}
+
+	// Creació dels processos fills Calculador que calguin
+	int pidCalculadors[processos];
+
+	// Creació pipe Respostes
+	if(pipe(respostes) < 0) {
+		// Cas d'error de creació dels pipes
+		perror ("ERROR en la creació del pipe respostes");
+		exit (-1);
+	}
+
+	for (int i = 0; i < processos; i++) {
+
+		pidCalculadors[i] = fork();
+
+		if (pidCalculadors[i] < 0 ) {
+			// Cas d'error del fork()
+			perror("ERROR en el fork del Calculador");
+			exit(-1);
+
+		} else if (pidCalculadors[i] == 0) {
+			// Creació del procés fill Calculador
+			// Dupliquem el descriptor de lectura de nombres al descriptor de fitxers 11 i el tanquem
+			dup2(nombres[0], NOMBRES_OUT);
+			close(nombres[0]);
+			close(nombres[1]);
+
+			// Fem el mateix amb el descriptor de escriptura de respostes posant-lo al 20
+			dup2(respostes[1], RESPOSTES_IN);
+			close(respostes[0]);
+			close(respostes[1]);
+
+			//Transformem aquest procés en un procés calculador
+			if(execlp("./calculador", "calculador", NULL) < 0) {
+				// En cas d'error en el recobriment
+				perror("ERROR en el recobriment del calculador");
+				exit(-1);
+			}
+			exit(0);
+		}
+	}
+	// Dupliquem la lectura del pipe respostes al descriptor 21
+	dup2(respostes[0],RESPOSTES_OUT);
+	close(respostes[1]);
+	close(respostes[0]);
+
+	// Tanquem els descriptos no utilitzats pel pare
+	close(nombres[1]);
+	close(nombres[0]);
+
+	int contadorPrimers = 0;
+
+	t_infoNombre infoNombre;
+
+	while((read(RESPOSTES_OUT, &infoNombre, sizeof(t_infoNombre))) > 0) {
+		char buffer[100];
+		sprintf(buffer, "Controlador: rebut del Calculador PID %d: nombre %d és primer? %c \n", infoNombre.pid, infoNombre.nombre, infoNombre.primer);
+
+		if(infoNombre.primer == 'S') {
+			contadorPrimers++;
+		}
+
+		// Mostrar els resultats dels calculadors i controlar l'error si n'hi ha
+		if(write(1,buffer,strlen(buffer)) < 0){
+          perror("Hi ha un error al escriure a la sortida: ");
+          exit(-1);
+      }
+	}
+
+	if((read(RESPOSTES_OUT, &infoNombre, sizeof(t_infoNombre))) < 0) {
+		perror("Error al llegir els resultats dels calculadors");
+      exit(-1);
+	}
+
+	// Enviem senyal SIGTERM al generador
+	if(kill(pidGenerador, SIGTERM) < 0) {
+		perror("Error en la senyal SIGTERM en el generador");
+		exit(-1);
+	}
+	// Esperem la finalització del generador
+	wait(NULL);
+
+	int primersOut = 0;
+	int exitCalculadors = 0;
+
+	// Enviem senyal SIGTERM als calculadors
+	for (int i = 0; i < processos ; i++) {
+		if(kill(pidCalculadors[i], SIGTERM) < 0) {
+			perror("Error en la senyal SIGTERM en el calculador");
+			exit(-1);
+		}
+		// Esperem la finalització del calculador en curs
+		wait(&exitCalculadors);
+		primersOut += WEXITSTATUS(exitCalculadors);
+	}
+
+	// Mostrar resultats
+	char resultats[300];
+	sprintf(resultats, "Controlador: nombrePrimersPipe = %d nombrePrimersExit = %d \n", contadorPrimers, primersOut);
+	if(write (1, resultats, strlen(resultats)) < 0) {
+		perror("Error en la sortida");
+      exit(-1);
+	}
+	exit(0);
 }
-

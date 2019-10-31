@@ -1,29 +1,61 @@
 /* -----------------------------------------------------------------------
-PRA1: [TODO]
+PRA1:  Processos, pipes i senyals: Primers - Pralab 1
 Codi font: calculador.c
-Nom complet Àiax Faura Vilalta
+Àiax Faura Vilalta
 ---------------------------------------------------------------------- */
-#include "process.h"
+#include "proces.h"
 
-void sig_handler(int signal){
-    exit(0);
-}
-int main(int argc, char **argv){
-    int num;
-    t_nameInfo info;
-    
-    info.pid = getpid(); 
-    while(read(11, &num, sizeof(num)) != 0){
-        info.prime = 'S';
-        info.name = num;
-        for(int i = 0; i < num; i++){
-            if(num % i == 0)
-                info.prime = 'N';
-        }
-        write(20, &info, sizeof(t_nameInfo));
-    }
-    close(20);
-    signal(SIGTERM, sig_handler);
-    pause();
+int totalPrimers;
+
+char numPrimer (int num);
+
+void sig_handler();
+
+int main(int argc, char const *argv[]) {
+
+	int nombre;
+	t_infoNombre resultat;
+
+	while ((read(NOMBRES_OUT, &nombre, sizeof(int))) > 0) {
+
+		resultat.pid = getpid();
+		resultat.nombre = nombre;
+		resultat.primer = numPrimer(nombre);
+
+		if(resultat.primer == 'S') {
+			totalPrimers++;
+		}
+
+		if(write(RESPOSTES_IN, &resultat, sizeof(t_infoNombre)) < 0) {
+			perror("Error en la escriptura en el pipe respostes");
+			exit(-1);
+		}
+	}
+
+	if((read(NOMBRES_OUT, &nombre, sizeof(int))) < 0) {
+		perror("Error en la lectura del pipe nombres");
+		exit(-1);
+	}
+
+	close(NOMBRES_OUT);
+	close(RESPOSTES_IN);
+
+	signal(SIGTERM, sig_handler);
+	pause();		// esperar fins a rebre una senyal
 }
 
+char numPrimer(int num) {
+	int cont = 2;
+
+		while (cont < num) {
+			if (num % cont == 0) {
+				return 'N';
+			}
+			cont++;
+		}
+		return 'S';
+}
+
+void sig_handler() {
+	exit(totalPrimers);
+}

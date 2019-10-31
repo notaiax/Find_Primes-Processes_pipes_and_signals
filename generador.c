@@ -1,25 +1,26 @@
 /* -----------------------------------------------------------------------
-PRA1: [TODO]
+PRA1:  Processos, pipes i senyals: Primers - Pralab 1
 Codi font: generador.c
-Nom complet Àiax Faura Vilalta
+Àiax Faura Vilalta
 ---------------------------------------------------------------------- */
-#include "process.h"
+#include "proces.h"
 
-void sig_handler(int signal){
-    exit(0);
+int main (int argc, char *argv[]) {
+
+	int N = atoi(argv[1]);
+
+	// Generador escriu la seqüència de N enters al pipe nombres
+	for(int i=2; i <= N; i++) {
+		if ((write(NOMBRES_IN, &i, sizeof(int))) < 0) {
+			perror("Error al escriure al pipe nombres");
+      	exit(-1);
+		}
+	}
+
+	//close(nombres[0]);
+	close(NOMBRES_IN);
+
+	// Esperem una senyal per acabar
+	signal(SIGTERM, SIG_DFL);
+	pause();
 }
-
-int main(int argc, char **argv){
-    int seq;
-
-    printf("Test\n");
-    seq = atoi(argv[1]);
-    for(int i = 2; i <= seq; i++){
-        if(write(10, &i, sizeof(int)) <= 0)
-            Error("[generador.c:main] Write pipe numbers\n"); 
-    }
-    close(10);
-    signal(SIGTERM, sig_handler);
-    pause();
-}
-
